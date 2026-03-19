@@ -273,25 +273,29 @@ ui <- fluidPage(
         var filename = slugify(getLabel()) + '.png';
         flat.toBlob(function(blob) {
           var blobUrl = URL.createObjectURL(blob);
-          var win = window.open();
+          var win = window.open('', '_blank');
           if (!win) {
-            setStatus('Popup blocked — please allow popups and try again');
+            setStatus('Popup blocked - please allow popups and try again');
             URL.revokeObjectURL(blobUrl);
             return;
           }
-          win.document.write(
-            '<html><head><title>' + filename + '</title></head>' +
-            '<body style=\"margin:0;background:#eee;display:flex;flex-direction:column;' +
-            'align-items:center;padding:20px;gap:14px;font-family:monospace;color:#333;\">' +
-            '<p style=\"font-size:13px;\">Right-click the image \u2192 <strong>Copy Image</strong> ' +
-            'to place it on the clipboard, or use the link below to save.</p>' +
-            '<a href=\"' + blobUrl + '\" download=\"' + filename + '\" ' +
-            'style=\"font-family:monospace;font-size:13px;color:#222;\">' +
-            '\u2193 Save as ' + filename + '</a>' +
-            '<img src=\"' + blobUrl + '\" style=\"max-width:100%;border:1px solid #ccc;border-radius:4px;\"/>' +
-            '</body></html>'
-          );
-          win.document.close();
+          var d = win.document;
+          d.title = filename;
+          d.body.style.cssText = 'margin:0;background:#eee;display:flex;flex-direction:column;align-items:center;padding:20px;gap:14px;font-family:monospace;color:#333;';
+          var p = d.createElement('p');
+          p.style.fontSize = '13px';
+          p.innerHTML = 'Right-click the image \u2192 <strong>Copy Image</strong> to place it on the clipboard, or use the link below to save.';
+          d.body.appendChild(p);
+          var a = d.createElement('a');
+          a.href = blobUrl;
+          a.download = filename;
+          a.style.cssText = 'font-family:monospace;font-size:13px;color:#222;';
+          a.textContent = '\u2193 Save as ' + filename;
+          d.body.appendChild(a);
+          var img = d.createElement('img');
+          img.src = blobUrl;
+          img.style.cssText = 'max-width:100%;border:1px solid #ccc;border-radius:4px;';
+          d.body.appendChild(img);
           setTimeout(function() { URL.revokeObjectURL(blobUrl); }, 60000);
           setStatus('\u2197 Opened in new window');
           setTimeout(function() { setStatus(''); }, 5000);
