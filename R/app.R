@@ -307,7 +307,7 @@ ui <- fluidPage(
   ),
   
   div(class = "app-wrapper",
-      tags$h1("Sketchpad"),
+      tags$h1("Sketch"),
       
       div(class = "toolbar",
           span(class = "toolbar-label", "Colour"),
