@@ -4,6 +4,21 @@
   var CAPTION_H = 48;
   var CAPTION_TOP = CANVAS_H - CAPTION_H; // 672
 
+  var ERASER_DIAMETER = 30; // display pixels
+
+  // Pre-build the SVG cursor: dotted circle sized to ERASER_DIAMETER
+  var ERASER_CURSOR = (function () {
+    var pad  = 2;
+    var size = ERASER_DIAMETER + pad * 2;
+    var c    = size / 2;
+    var r    = ERASER_DIAMETER / 2;
+    var svg  = '<svg xmlns="http://www.w3.org/2000/svg" width="' + size + '" height="' + size + '">' +
+      '<circle cx="' + c + '" cy="' + c + '" r="' + r + '" ' +
+      'fill="none" stroke="rgba(0,0,0,0.75)" stroke-width="1.5" stroke-dasharray="3 3"/>' +
+      '</svg>';
+    return 'url("data:image/svg+xml,' + encodeURIComponent(svg) + '") ' + c + ' ' + c + ', crosshair';
+  })();
+
   var isDrawing = false;
   var isErasing = false;
   var lastX = 0, lastY = 0;
@@ -45,7 +60,9 @@
     var tg = parseInt(currentColour.slice(3, 5), 16);
     var tb = parseInt(currentColour.slice(5, 7), 16);
 
-    var radius = Math.max(currentSize / 2, 4);
+    // Convert the fixed display radius to canvas pixel space at the current zoom level
+    var scale  = canvas.width / canvas.getBoundingClientRect().width;
+    var radius = (ERASER_DIAMETER / 2) * scale;
     var x0 = Math.max(0,            Math.floor(x - radius));
     var y0 = Math.max(0,            Math.floor(y - radius));
     var x1 = Math.min(canvas.width, Math.ceil(x  + radius));
@@ -156,25 +173,26 @@
 
   function updateEraserToggle() {
     var toggle = document.getElementById('eraserToggle');
+    var canvas = document.getElementById('drawCanvas');
     if (!toggle) return;
     if (isErasing) {
       toggle.style.background = 'repeating-linear-gradient(-45deg, #fff 0px, #fff 3px, ' + currentColour + ' 3px, ' + currentColour + ' 6px)';
       toggle.style.borderStyle = 'dotted';
       toggle.style.borderColor = currentColour;
       toggle.style.boxShadow = '0 0 0 2px #f0f0f0, 0 0 0 4px ' + currentColour;
+      if (canvas) { canvas.style.cursor = ERASER_CURSOR; }
     } else {
       toggle.style.background = '#fff';
       toggle.style.borderStyle = 'dotted';
       toggle.style.borderColor = '';
       toggle.style.boxShadow = '';
+      if (canvas) { canvas.style.cursor = 'crosshair'; }
     }
   }
 
   function toggleEraser() {
     isErasing = !isErasing;
     updateEraserToggle();
-    var canvas = document.getElementById('drawCanvas');
-    if (canvas) { canvas.style.cursor = isErasing ? 'cell' : 'crosshair'; }
   }
 
   function setColour(col, el) {
