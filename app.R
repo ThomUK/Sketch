@@ -62,7 +62,7 @@ ui <- fluidPage(
       tags$label(`for` = "imageCaption", "Caption"),
       tags$input(
         id = "imageCaption", type = "text",
-        placeholder = "Optional caption — shown on exported image"
+        placeholder = "Add an optional caption to your sketch...",
       )
     ),
     div(
