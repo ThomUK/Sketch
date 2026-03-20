@@ -1,8 +1,41 @@
 (function () {
+  var CANVAS_W = 1280;
+  var CANVAS_H = 720;
+  var CAPTION_H = 48;
+
   var isDrawing = false;
   var lastX = 0, lastY = 0;
   var currentColour = '#222222';
   var currentSize = 4;
+
+  // Scale display coordinates to canvas pixel coordinates
+  function getCanvasCoords(canvas, clientX, clientY) {
+    var r = canvas.getBoundingClientRect();
+    return {
+      x: (clientX - r.left) * (canvas.width  / r.width),
+      y: (clientY - r.top)  * (canvas.height / r.height)
+    };
+  }
+
+  // Y coordinate above which drawing is allowed (full height when no label)
+  function captionZoneStart() {
+    return getLabel() ? CANVAS_H - CAPTION_H : CANVAS_H;
+  }
+
+  // Draw a segment, clamping to the caption zone boundary and stopping there
+  function drawSegment(ctx, x, y) {
+    var limit = captionZoneStart();
+    var targetY = Math.min(y, limit - 1);
+    ctx.beginPath();
+    ctx.strokeStyle = currentColour;
+    ctx.lineWidth = currentSize;
+    ctx.moveTo(lastX, lastY);
+    ctx.lineTo(x, targetY);
+    ctx.stroke();
+    lastX = x;
+    lastY = targetY;
+    if (y >= limit) { isDrawing = false; }
+  }
 
   function initCanvas() {
     var canvas = document.getElementById('drawCanvas');
@@ -11,50 +44,49 @@
     ctx.lineCap = 'round';
     ctx.lineJoin = 'round';
 
+    // Mouse events
     canvas.addEventListener('mousedown', function(e) {
+      var coords = getCanvasCoords(canvas, e.clientX, e.clientY);
+      if (coords.y >= captionZoneStart()) return;
       isDrawing = true;
-      var r = canvas.getBoundingClientRect();
-      lastX = e.clientX - r.left;
-      lastY = e.clientY - r.top;
+      lastX = coords.x;
+      lastY = coords.y;
     });
     canvas.addEventListener('mousemove', function(e) {
       if (!isDrawing) return;
-      var r = canvas.getBoundingClientRect();
-      var x = e.clientX - r.left;
-      var y = e.clientY - r.top;
-      ctx.beginPath();
-      ctx.strokeStyle = currentColour;
-      ctx.lineWidth = currentSize;
-      ctx.moveTo(lastX, lastY);
-      ctx.lineTo(x, y);
-      ctx.stroke();
-      lastX = x; lastY = y;
+      var coords = getCanvasCoords(canvas, e.clientX, e.clientY);
+      drawSegment(ctx, coords.x, coords.y);
     });
     canvas.addEventListener('mouseup',    function() { isDrawing = false; });
     canvas.addEventListener('mouseleave', function() { isDrawing = false; });
 
+    // Touch events
     canvas.addEventListener('touchstart', function(e) {
       e.preventDefault();
+      var coords = getCanvasCoords(canvas, e.touches[0].clientX, e.touches[0].clientY);
+      if (coords.y >= captionZoneStart()) return;
       isDrawing = true;
-      var r = canvas.getBoundingClientRect();
-      lastX = e.touches[0].clientX - r.left;
-      lastY = e.touches[0].clientY - r.top;
+      lastX = coords.x;
+      lastY = coords.y;
     }, { passive: false });
     canvas.addEventListener('touchmove', function(e) {
       e.preventDefault();
       if (!isDrawing) return;
-      var r = canvas.getBoundingClientRect();
-      var x = e.touches[0].clientX - r.left;
-      var y = e.touches[0].clientY - r.top;
-      ctx.beginPath();
-      ctx.strokeStyle = currentColour;
-      ctx.lineWidth = currentSize;
-      ctx.moveTo(lastX, lastY);
-      ctx.lineTo(x, y);
-      ctx.stroke();
-      lastX = x; lastY = y;
+      var coords = getCanvasCoords(canvas, e.touches[0].clientX, e.touches[0].clientY);
+      drawSegment(ctx, coords.x, coords.y);
     }, { passive: false });
     canvas.addEventListener('touchend', function() { isDrawing = false; });
+
+    // Show/hide caption zone indicator when label changes
+    var labelInput = document.getElementById('imageLabel');
+    if (labelInput) {
+      labelInput.addEventListener('input', updateCaptionZone);
+    }
+  }
+
+  function updateCaptionZone() {
+    var preview = document.getElementById('captionPreview');
+    if (preview) { preview.textContent = getLabel(); }
   }
 
   function setColour(col, el) {
@@ -86,25 +118,26 @@
     return text.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '') || 'sketch';
   }
 
+  // Caption is overlaid within the bottom CAPTION_H pixels — output is always CANVAS_W x CANVAS_H
   function buildFlat() {
     var canvas = document.getElementById('drawCanvas');
     var label  = getLabel();
-    var labelH = label ? 48 : 0;
     var flat   = document.createElement('canvas');
-    flat.width  = canvas.width;
-    flat.height = canvas.height + labelH;
+    flat.width  = CANVAS_W;
+    flat.height = CANVAS_H;
     var ctx = flat.getContext('2d');
     ctx.fillStyle = '#ffffff';
     ctx.fillRect(0, 0, flat.width, flat.height);
     ctx.drawImage(canvas, 0, 0);
     if (label) {
+      var captionY = CANVAS_H - CAPTION_H;
       ctx.fillStyle = '#222';
-      ctx.fillRect(0, canvas.height, flat.width, labelH);
+      ctx.fillRect(0, captionY, flat.width, CAPTION_H);
       ctx.fillStyle = '#fff';
       ctx.font = 'bold 18px monospace';
       ctx.textAlign = 'center';
       ctx.textBaseline = 'middle';
-      ctx.fillText(label, flat.width / 2, canvas.height + labelH / 2);
+      ctx.fillText(label, flat.width / 2, captionY + CAPTION_H / 2);
     }
     return flat;
   }

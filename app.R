@@ -44,7 +44,8 @@ ui <- fluidPage(
     ),
     div(
       class = "canvas-container",
-      tags$canvas(id = "drawCanvas", width = "1366", height = "768")
+      tags$canvas(id = "drawCanvas", width = "1280", height = "720"),
+      tags$div(id = "captionPreview")
     ),
     div(
       class = "label-row",

@@ -11,7 +11,7 @@ body {
   flex-direction: column;
   align-items: center;
   gap: 14px;
-  max-width: 1366px;
+  max-width: 1280px;
   margin: 0 auto;
 }
 
@@ -76,14 +76,43 @@ input[type=range]::-webkit-slider-thumb {
 }
 
 .canvas-container {
+  position: relative;
+  width: 100%;
   border: 1px solid #ccc;
   border-radius: 6px;
   overflow: hidden;
   box-shadow: 0 2px 12px rgba(0,0,0,0.1);
 }
 
+/* Live caption preview — overlaid on the bottom 48px of the 720px canvas (6.667% of height).
+   Hidden via :empty when the label field is blank. */
+#captionPreview {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 6.667%;
+  background: #222;
+  color: #fff;
+  font-family: monospace;
+  font-weight: bold;
+  font-size: clamp(9px, 1.4vw, 18px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  pointer-events: none;
+  text-align: center;
+  padding: 0 1em;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+#captionPreview:empty { display: none; }
+
 #drawCanvas {
   display: block;
+  width: 100%;
+  height: auto;
   cursor: crosshair;
   background: #fff;
 }
@@ -93,7 +122,6 @@ input[type=range]::-webkit-slider-thumb {
   align-items: center;
   gap: 10px;
   width: 100%;
-  max-width: 1366px;
 }
 
 .label-row label {
