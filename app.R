@@ -7,9 +7,11 @@ ui <- fluidPage(
   ),
   div(
     class = "app-wrapper",
-    tags$h1("Sketch"),
     div(
-      class = "toolbar",
+      class = "header-row",
+      tags$h1("Sketch"),
+      div(
+        class = "toolbar",
       span(class = "toolbar-label", "Colour"),
       tags$div(
         class = "colour-swatch active", style = "background:#222;",
@@ -47,6 +49,7 @@ ui <- fluidPage(
         id = "eraserToggle", class = "eraser-toggle",
         title = "Erase strokes of the current colour",
         onclick = "toggleEraser()"
+      )
       )
     ),
     div(
