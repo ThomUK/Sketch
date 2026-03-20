@@ -1,13 +1,21 @@
+// Sketch — all drawing logic wrapped in an IIFE to avoid polluting the global scope.
+// Only the functions referenced by inline onclick handlers are exposed on window.
 (function () {
+
+  // Canvas buffer dimensions (fixed export resolution)
   var CANVAS_W = 1280;
   var CANVAS_H = 720;
-  var CAPTION_H = 48;
+
+  // Caption bar occupies the bottom 48px of the canvas buffer.
+  // Drawing is blocked below CAPTION_TOP so strokes never cover the caption.
+  var CAPTION_H   = 48;
   var CAPTION_TOP = CANVAS_H - CAPTION_H; // 672
 
-  var ERASER_DIAMETER = 30; // display pixels
-  var TOLERANCE = 28;       // colour-selective erase: max RGB error
+  var ERASER_DIAMETER = 30; // eraser brush size in display pixels
+  var TOLERANCE = 28;       // colour-selective erase: max RGB error before a pixel is considered a match
 
-  // Pre-build the SVG cursor: dotted circle sized to ERASER_DIAMETER
+  // Build the SVG eraser cursor once at startup: a dotted circle matching ERASER_DIAMETER.
+  // Encoded as a data URL and used as a CSS cursor value with the hotspot centred.
   var ERASER_CURSOR = (function () {
     var pad  = 2;
     var size = ERASER_DIAMETER + pad * 2;
@@ -20,18 +28,22 @@
     return 'url("data:image/svg+xml,' + encodeURIComponent(svg) + '") ' + c + ' ' + c + ', crosshair';
   })();
 
+  // Drawing state
   var isDrawing  = false;
-  var eraserMode = 0; // 0 = off, 1 = erase selected colour, 2 = erase all colours
+  var eraserMode = 0; // 0 = off, 1 = erase selected colour only, 2 = erase all colours
   var lastX = 0, lastY = 0;
   var currentColour = '#222222';
   var currentSize = 4;
 
+  // Returns a zero-padded YYYY-MM-DD HH:MM:SS string for the given Date.
   function formatDateTime(d) {
     var p = function(n) { return String(n).padStart(2, '0'); };
     return d.getFullYear() + '-' + p(d.getMonth() + 1) + '-' + p(d.getDate()) +
       ' ' + p(d.getHours()) + ':' + p(d.getMinutes()) + ':' + p(d.getSeconds());
   }
 
+  // Converts a client pointer position to canvas buffer coordinates,
+  // accounting for the difference between display size and buffer resolution.
   function getCanvasCoords(canvas, clientX, clientY) {
     var r = canvas.getBoundingClientRect();
     return {
@@ -40,7 +52,8 @@
     };
   }
 
-  // Draw a segment, clamping to the caption boundary
+  // Draws a line segment from (lastX, lastY) to (x, y), clamped to the caption boundary.
+  // Stops drawing if the pointer crosses into the caption zone.
   function drawSegment(ctx, x, y) {
     var targetY = Math.min(y, CAPTION_TOP - 1);
     ctx.beginPath();
@@ -54,6 +67,8 @@
     if (y >= CAPTION_TOP) { isDrawing = false; }
   }
 
+  // Draws a filled circle at (x, y) — used on mousedown/touchstart so a tap
+  // always produces a visible mark even without a subsequent move event.
   function drawPoint(ctx, x, y) {
     ctx.beginPath();
     ctx.fillStyle = currentColour;
@@ -61,6 +76,8 @@
     ctx.fill();
   }
 
+  // Dispatches a pointer move to either erase or draw, used by both
+  // mousemove and touchmove handlers to avoid duplicating the logic.
   function handlePointer(ctx, canvas, x, y) {
     if (eraserMode > 0) {
       if (y < CAPTION_TOP) { erase(ctx, canvas, x, y); }
@@ -69,12 +86,19 @@
     }
   }
 
-  // Erase pixels in a circular brush.
-  // Mode 1: colour-selective — only pixels that look like a blend of currentColour on white.
-  // Mode 2: erase all — every pixel in the circle becomes white.
+  // Erases pixels within a circular brush centred at (x, y).
+  //
+  // Mode 1 — colour-selective: projects each pixel onto the white→currentColour
+  // ray in RGB space. A pixel is erased only if it lies close enough to that ray
+  // (within TOLERANCE), so strokes of other colours are left untouched.
+  //
+  // Mode 2 — erase all: every pixel inside the circle is set to white.
   function erase(ctx, canvas, x, y) {
+    // Scale the display-pixel brush radius to canvas buffer pixels
     var scale  = canvas.width / canvas.getBoundingClientRect().width;
     var radius = (ERASER_DIAMETER / 2) * scale;
+
+    // Bounding box of the affected region, clamped to the drawing area
     var x0 = Math.max(0,            Math.floor(x - radius));
     var y0 = Math.max(0,            Math.floor(y - radius));
     var x1 = Math.min(canvas.width, Math.ceil(x  + radius));
@@ -95,13 +119,13 @@
         data[i] = data[i + 1] = data[i + 2] = 255;
       }
     } else {
-      // Direction vector from white to the target colour (the "colour ray")
+      // Direction vector from white (255,255,255) toward currentColour
       var tr = parseInt(currentColour.slice(1, 3), 16);
       var tg = parseInt(currentColour.slice(3, 5), 16);
       var tb = parseInt(currentColour.slice(5, 7), 16);
       var dwr = 255 - tr, dwg = 255 - tg, dwb = 255 - tb;
       var magSq = dwr*dwr + dwg*dwg + dwb*dwb;
-      if (magSq < 1) return; // target is white — nothing to erase
+      if (magSq < 1) return; // currentColour is white — nothing to erase
 
       for (var i = 0; i < data.length; i += 4) {
         var idx = i / 4;
@@ -110,9 +134,13 @@
         if ((px - x) * (px - x) + (py - y) * (py - y) > rSq) continue;
 
         var pr = data[i], pg = data[i + 1], pb = data[i + 2];
-        var alpha = ((255-pr)*dwr + (255-pg)*dwg + (255-pb)*dwb) / magSq;
-        if (alpha <= 0.02 || alpha > 1.2) continue;
 
+        // Project the pixel onto the colour ray: alpha = how much of the target
+        // colour is present, assuming the pixel is alpha*colour + (1-alpha)*white
+        var alpha = ((255-pr)*dwr + (255-pg)*dwg + (255-pb)*dwb) / magSq;
+        if (alpha <= 0.02 || alpha > 1.2) continue; // pixel is near-white or a different hue
+
+        // Accept the pixel if it falls within TOLERANCE of the expected blended colour
         var a = Math.min(alpha, 1);
         var er = Math.round(255 - a * dwr) - pr;
         var eg = Math.round(255 - a * dwg) - pg;
@@ -125,6 +153,8 @@
     ctx.putImageData(imageData, x0, y0);
   }
 
+  // Sets up all canvas event listeners and initialises the caption bar.
+  // Retries after 100 ms if the canvas element is not yet in the DOM.
   function initCanvas() {
     var canvas = document.getElementById('drawCanvas');
     if (!canvas) { setTimeout(initCanvas, 100); return; }
@@ -153,7 +183,7 @@
     canvas.addEventListener('mouseup',    function() { isDrawing = false; });
     canvas.addEventListener('mouseleave', function() { isDrawing = false; });
 
-    // Touch events
+    // Touch events (passive: false required to allow preventDefault on touchmove)
     canvas.addEventListener('touchstart', function(e) {
       e.preventDefault();
       var coords = getCanvasCoords(canvas, e.touches[0].clientX, e.touches[0].clientY);
@@ -175,14 +205,17 @@
     }, { passive: false });
     canvas.addEventListener('touchend', function() { isDrawing = false; });
 
+    // Auto-focus the caption when the user starts typing anywhere on the page,
+    // so they never need to click the caption bar before adding text.
     document.addEventListener('keydown', function(e) {
       if (e.ctrlKey || e.metaKey || e.altKey) return;
-      if (e.key.length !== 1) return;
+      if (e.key.length !== 1) return; // ignore non-printable keys
       var caption = document.querySelector('#captionPreview .caption-text');
       if (!caption || document.activeElement === caption) return;
       caption.focus();
     });
 
+    // Keep the datetime in the caption bar ticking every second
     setInterval(function() {
       var el = document.querySelector('#captionPreview .caption-datetime');
       if (el) { el.textContent = formatDateTime(new Date()); }
@@ -191,6 +224,8 @@
     updateCaptionPreview();
   }
 
+  // Creates the caption bar spans on first call, then updates the datetime each tick.
+  // The caption text span is contenteditable — the user types directly into it.
   function updateCaptionPreview() {
     var preview = document.getElementById('captionPreview');
     if (!preview) return;
@@ -200,10 +235,13 @@
       left = document.createElement('span');
       left.className = 'caption-text';
       left.contentEditable = 'true';
-      left.dataset.placeholder = 'STart typing to add a caption...';
+      left.dataset.placeholder = 'Start typing to add a caption...';
+      // Prevent newlines — caption must stay single-line
       left.addEventListener('keydown', function(e) {
         if (e.key === 'Enter') e.preventDefault();
       });
+      // Browsers insert a <br> when the last character is deleted, which
+      // prevents the :empty CSS selector from matching. Clear it immediately.
       left.addEventListener('input', function() {
         if (left.innerHTML === '<br>') left.innerHTML = '';
       });
@@ -215,6 +253,10 @@
     right.textContent = formatDateTime(new Date());
   }
 
+  // Updates the eraser toggle button's visual state to reflect the current eraserMode.
+  // Mode 0: inactive (dotted border, white fill)
+  // Mode 1: colour-selective (crosshatch in currentColour, matching border ring)
+  // Mode 2: erase-all ("all" label, dark border ring)
   function updateEraserToggle() {
     var toggle = document.getElementById('eraserToggle');
     var canvas = document.getElementById('drawCanvas');
@@ -257,7 +299,7 @@
 
   function setColour(col, el) {
     currentColour = col;
-    if (eraserMode === 1) { updateEraserToggle(); } // refresh crosshatch colour
+    if (eraserMode === 1) { updateEraserToggle(); } // refresh crosshatch to match new colour
     var prev = document.querySelector('.colour-swatch.active');
     if (prev) prev.classList.remove('active');
     el.classList.add('active');
@@ -274,21 +316,26 @@
     document.getElementById('copyStatus').textContent = msg;
   }
 
+  // Returns the current caption text, read directly from the contenteditable span.
   function getCaption() {
     var el = document.querySelector('#captionPreview .caption-text');
     return el ? el.textContent.trim() : '';
   }
 
+  // Converts caption text to a URL-safe filename slug.
   function slugify(text) {
     if (!text) return 'sketch';
     return text.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '') || 'sketch';
   }
 
+  // Composites the drawing canvas and caption bar into a single flat 1280×720 canvas
+  // suitable for export. The caption bar is re-rendered at full resolution here,
+  // independent of how it appears in the responsive on-screen preview.
   function buildFlat() {
-    var canvas  = document.getElementById('drawCanvas');
-    var caption = getCaption();
+    var canvas   = document.getElementById('drawCanvas');
+    var caption  = getCaption();
     var datetime = formatDateTime(new Date());
-    var padding = 20;
+    var padding  = 20;
 
     var flat = document.createElement('canvas');
     flat.width  = CANVAS_W;
@@ -316,6 +363,9 @@
     return flat;
   }
 
+  // Exports the current sketch as a PNG by opening a new popup window.
+  // The popup contains an instruction, the full-resolution image, and a save link.
+  // The blob URL is revoked after 60 seconds to free memory.
   function openInNewWindow() {
     var flat     = buildFlat();
     var filename = slugify(getCaption()) + '.png';
@@ -350,6 +400,7 @@
     }, 'image/png');
   }
 
+  // Expose only what the HTML onclick attributes need
   window.setColour = setColour;
   window.setSize = setSize;
   window.clearCanvas = clearCanvas;
