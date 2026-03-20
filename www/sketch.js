@@ -191,8 +191,11 @@
     var canvas = document.getElementById('drawCanvas');
     if (!toggle) return;
     if (isErasing) {
-      toggle.style.background = 'repeating-linear-gradient(-45deg, #fff 0px, #fff 3px, ' + currentColour + ' 3px, ' + currentColour + ' 6px)';
-      toggle.style.borderStyle = 'dotted';
+      var hatch = 'repeating-linear-gradient(45deg,  ' + currentColour + ' 0, ' + currentColour + ' 3px, transparent 3px, transparent 8px),' +
+                  'repeating-linear-gradient(-45deg, ' + currentColour + ' 0, ' + currentColour + ' 3px, transparent 3px, transparent 8px),' +
+                  '#fff';
+      toggle.style.background = hatch;
+      toggle.style.borderStyle = 'solid';
       toggle.style.borderColor = currentColour;
       toggle.style.boxShadow = '0 0 0 2px #f0f0f0, 0 0 0 4px ' + currentColour;
       if (canvas) { canvas.style.cursor = ERASER_CURSOR; }
