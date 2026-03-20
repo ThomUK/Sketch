@@ -124,7 +124,14 @@
       isDrawing = true;
       lastX = coords.x;
       lastY = coords.y;
-      if (eraserMode > 0) { erase(ctx, canvas, coords.x, coords.y); }
+      if (eraserMode > 0) {
+        erase(ctx, canvas, coords.x, coords.y);
+      } else {
+        ctx.beginPath();
+        ctx.fillStyle = currentColour;
+        ctx.arc(coords.x, coords.y, currentSize / 2, 0, Math.PI * 2);
+        ctx.fill();
+      }
     });
     canvas.addEventListener('mousemove', function(e) {
       if (!isDrawing) return;
@@ -146,7 +153,14 @@
       isDrawing = true;
       lastX = coords.x;
       lastY = coords.y;
-      if (eraserMode > 0) { erase(ctx, canvas, coords.x, coords.y); }
+      if (eraserMode > 0) {
+        erase(ctx, canvas, coords.x, coords.y);
+      } else {
+        ctx.beginPath();
+        ctx.fillStyle = currentColour;
+        ctx.arc(coords.x, coords.y, currentSize / 2, 0, Math.PI * 2);
+        ctx.fill();
+      }
     }, { passive: false });
     canvas.addEventListener('touchmove', function(e) {
       e.preventDefault();
