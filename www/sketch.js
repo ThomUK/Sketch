@@ -319,14 +319,14 @@
       }
       var d = win.document;
       d.title = filename;
-      d.body.style.cssText = 'margin:0;background:#f0f0f0;display:flex;flex-direction:column;align-items:center;padding:24px;gap:16px;font-family:monospace;color:#333;';
+      d.body.style.cssText = 'margin:0;background:#f0f0f0;display:flex;flex-direction:column;align-items:center;padding:24px;gap:16px;font-family:monospace;color:#333;height:100vh;box-sizing:border-box;overflow:hidden;';
       var p = d.createElement('p');
       p.style.cssText = 'font-family:monospace;font-size:0.9rem;color:#666;text-transform:uppercase;letter-spacing:1px;';
       p.textContent = 'Right-click the image to copy, or save using the button below.';
       d.body.appendChild(p);
       var img = d.createElement('img');
       img.src = blobUrl;
-      img.style.cssText = 'max-width:100%;border:1px solid #ccc;border-radius:6px;box-shadow:0 2px 12px rgba(0,0,0,0.1);';
+      img.style.cssText = 'flex:1;min-height:0;max-width:100%;object-fit:contain;border:1px solid #ccc;border-radius:6px;box-shadow:0 2px 12px rgba(0,0,0,0.1);';
       d.body.appendChild(img);
       var a = d.createElement('a');
       a.href = blobUrl;
