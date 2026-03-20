@@ -33,8 +33,6 @@ h1 {
   align-items: center;
   height: 52px;
   margin: 0;
-  border: 2px solid #222;
-  border-radius: 6px;
   padding: 0 16px;
 }
 
@@ -175,10 +173,8 @@ input[type=range]::-webkit-slider-thumb {
 #imageCaption:focus { border-color: #888; }
 #imageCaption::placeholder { color: #bbb; }
 
-.btn-row { display: flex; gap: 40px; }
-
 button {
-  font-size: 1rem;
+  font-size: 1.6rem;
   text-transform: uppercase;
   letter-spacing: 1px;
   padding: 0 40px;
