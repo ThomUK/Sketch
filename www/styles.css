@@ -177,6 +177,16 @@ button.primary {
 }
 button.primary:hover { background: #444; border-color: #444; }
 
+@media (max-width: 900px) {
+  .header-row {
+    flex-wrap: wrap;
+  }
+  .toolbar {
+    margin-left: 0;
+    width: 100%;
+  }
+}
+
 #copyStatus {
   font-size: 0.85rem;
   color: #444;
