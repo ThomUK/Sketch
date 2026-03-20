@@ -8,6 +8,15 @@
   var currentColour = '#222222';
   var currentSize = 4;
 
+  // Caption zone is always reserved at the bottom
+  var CAPTION_TOP = CANVAS_H - CAPTION_H; // 672
+
+  function formatDateTime(d) {
+    var p = function(n) { return String(n).padStart(2, '0'); };
+    return d.getFullYear() + '-' + p(d.getMonth() + 1) + '-' + p(d.getDate()) +
+      ' ' + p(d.getHours()) + ':' + p(d.getMinutes()) + ':' + p(d.getSeconds());
+  }
+
   // Scale display coordinates to canvas pixel coordinates
   function getCanvasCoords(canvas, clientX, clientY) {
     var r = canvas.getBoundingClientRect();
@@ -17,15 +26,9 @@
     };
   }
 
-  // Y coordinate above which drawing is allowed (full height when no label)
-  function captionZoneStart() {
-    return getLabel() ? CANVAS_H - CAPTION_H : CANVAS_H;
-  }
-
-  // Draw a segment, clamping to the caption zone boundary and stopping there
+  // Draw a segment, clamping to the caption zone and stopping there
   function drawSegment(ctx, x, y) {
-    var limit = captionZoneStart();
-    var targetY = Math.min(y, limit - 1);
+    var targetY = Math.min(y, CAPTION_TOP - 1);
     ctx.beginPath();
     ctx.strokeStyle = currentColour;
     ctx.lineWidth = currentSize;
@@ -34,7 +37,7 @@
     ctx.stroke();
     lastX = x;
     lastY = targetY;
-    if (y >= limit) { isDrawing = false; }
+    if (y >= CAPTION_TOP) { isDrawing = false; }
   }
 
   function initCanvas() {
@@ -47,7 +50,7 @@
     // Mouse events
     canvas.addEventListener('mousedown', function(e) {
       var coords = getCanvasCoords(canvas, e.clientX, e.clientY);
-      if (coords.y >= captionZoneStart()) return;
+      if (coords.y >= CAPTION_TOP) return;
       isDrawing = true;
       lastX = coords.x;
       lastY = coords.y;
@@ -64,7 +67,7 @@
     canvas.addEventListener('touchstart', function(e) {
       e.preventDefault();
       var coords = getCanvasCoords(canvas, e.touches[0].clientX, e.touches[0].clientY);
-      if (coords.y >= captionZoneStart()) return;
+      if (coords.y >= CAPTION_TOP) return;
       isDrawing = true;
       lastX = coords.x;
       lastY = coords.y;
@@ -77,16 +80,36 @@
     }, { passive: false });
     canvas.addEventListener('touchend', function() { isDrawing = false; });
 
-    // Show/hide caption zone indicator when label changes
-    var labelInput = document.getElementById('imageLabel');
-    if (labelInput) {
-      labelInput.addEventListener('input', updateCaptionZone);
+    // Update caption text when user types
+    var captionInput = document.getElementById('imageCaption');
+    if (captionInput) {
+      captionInput.addEventListener('input', updateCaptionPreview);
     }
+
+    // Keep the datetime in the preview ticking
+    setInterval(function() {
+      var el = document.querySelector('#captionPreview .caption-datetime');
+      if (el) { el.textContent = formatDateTime(new Date()); }
+    }, 1000);
+
+    updateCaptionPreview();
   }
 
-  function updateCaptionZone() {
+  function updateCaptionPreview() {
     var preview = document.getElementById('captionPreview');
-    if (preview) { preview.textContent = getLabel(); }
+    if (!preview) return;
+    var left = preview.querySelector('.caption-text');
+    var right = preview.querySelector('.caption-datetime');
+    if (!left) {
+      left  = document.createElement('span');
+      left.className = 'caption-text';
+      right = document.createElement('span');
+      right.className = 'caption-datetime';
+      preview.appendChild(left);
+      preview.appendChild(right);
+    }
+    left.textContent  = getCaption();
+    right.textContent = formatDateTime(new Date());
   }
 
   function setColour(col, el) {
@@ -108,8 +131,8 @@
     document.getElementById('copyStatus').textContent = msg;
   }
 
-  function getLabel() {
-    var el = document.getElementById('imageLabel');
+  function getCaption() {
+    var el = document.getElementById('imageCaption');
     return el ? el.value.trim() : '';
   }
 
@@ -118,33 +141,43 @@
     return text.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '') || 'sketch';
   }
 
-  // Caption is overlaid within the bottom CAPTION_H pixels — output is always CANVAS_W x CANVAS_H
+  // Caption is always overlaid within the bottom CAPTION_H pixels — output is always CANVAS_W x CANVAS_H
   function buildFlat() {
-    var canvas = document.getElementById('drawCanvas');
-    var label  = getLabel();
-    var flat   = document.createElement('canvas');
+    var canvas  = document.getElementById('drawCanvas');
+    var caption = getCaption();
+    var datetime = formatDateTime(new Date());
+    var padding = 20;
+
+    var flat = document.createElement('canvas');
     flat.width  = CANVAS_W;
     flat.height = CANVAS_H;
     var ctx = flat.getContext('2d');
+
     ctx.fillStyle = '#ffffff';
     ctx.fillRect(0, 0, flat.width, flat.height);
     ctx.drawImage(canvas, 0, 0);
-    if (label) {
-      var captionY = CANVAS_H - CAPTION_H;
-      ctx.fillStyle = '#222';
-      ctx.fillRect(0, captionY, flat.width, CAPTION_H);
-      ctx.fillStyle = '#fff';
-      ctx.font = 'bold 18px monospace';
-      ctx.textAlign = 'center';
-      ctx.textBaseline = 'middle';
-      ctx.fillText(label, flat.width / 2, captionY + CAPTION_H / 2);
-    }
+
+    // Caption bar
+    ctx.fillStyle = '#80CBC4';
+    ctx.fillRect(0, CAPTION_TOP, flat.width, CAPTION_H);
+
+    ctx.fillStyle = '#000';
+    ctx.font = 'bold 18px monospace';
+    ctx.textBaseline = 'middle';
+    var midY = CAPTION_TOP + CAPTION_H / 2;
+
+    ctx.textAlign = 'left';
+    ctx.fillText(caption, padding, midY);
+
+    ctx.textAlign = 'right';
+    ctx.fillText(datetime, flat.width - padding, midY);
+
     return flat;
   }
 
   function openInNewWindow() {
     var flat     = buildFlat();
-    var filename = slugify(getLabel()) + '.png';
+    var filename = slugify(getCaption()) + '.png';
     flat.toBlob(function(blob) {
       var blobUrl = URL.createObjectURL(blob);
       var win = window.open('', '_blank');

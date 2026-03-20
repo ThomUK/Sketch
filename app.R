@@ -49,10 +49,10 @@ ui <- fluidPage(
     ),
     div(
       class = "label-row",
-      tags$label(`for` = "imageLabel", "Label"),
+      tags$label(`for` = "imageCaption", "Caption"),
       tags$input(
-        id = "imageLabel", type = "text",
-        placeholder = "Optional label — shown on exported image"
+        id = "imageCaption", type = "text",
+        placeholder = "Optional caption — shown on exported image"
       )
     ),
     div(
