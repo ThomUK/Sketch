@@ -16,24 +16,11 @@ jobs:
           r-version: release
           use-public-rspm: true
 
-      - name: Install dependencies
-        run: Rscript -e 'install.packages(c("shiny", "rsconnect"), repos = "https://packagemanager.posit.co/cran/latest")'
-
-      - name: Deploy
+      - name: Install and deploy
         env:
           SHINYAPPSIO_ACCOUNT: ${{ secrets.SHINYAPPSIO_ACCOUNT }}
           SHINYAPPSIO_TOKEN:   ${{ secrets.SHINYAPPSIO_TOKEN }}
           SHINYAPPSIO_SECRET:  ${{ secrets.SHINYAPPSIO_SECRET }}
         run: |
-          Rscript -e '
-            rsconnect::setAccountInfo(
-              name   = Sys.getenv("SHINYAPPSIO_ACCOUNT"),
-              token  = Sys.getenv("SHINYAPPSIO_TOKEN"),
-              secret = Sys.getenv("SHINYAPPSIO_SECRET")
-            )
-            rsconnect::deployApp(
-              appDir  = ".",
-              appName = "sketch",
-              forceUpdate = TRUE
-            )
-          '
+          Rscript -e "rsconnect::setAccountInfo(name=${{secrets.SHINYAPPSIO_ACCOUNT}}, token=${{secrets.SHINYAPPSIO_TOKEN}}, secret=${{secrets.SHINYAPPSIO_SECRET}})"
+          Rscript -e "rsconnect::deployApp(appName = 'sketch', appDir = '.', forceUpdate = TRUE)" 
