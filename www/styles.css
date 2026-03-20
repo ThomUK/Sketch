@@ -23,7 +23,6 @@ body {
 }
 
 h1 {
-  font-family: monospace;
   font-size: 2rem;
   color: #222;
   letter-spacing: 2px;
@@ -52,22 +51,24 @@ h1 {
 }
 
 .toolbar-label {
-  font-family: monospace;
   font-size: 1rem;
   color: #666;
   text-transform: uppercase;
   letter-spacing: 1px;
 }
 
-.colour-swatch {
+.toolbar-circle {
   width: 30px;
   height: 30px;
   border-radius: 50%;
   cursor: pointer;
-  border: 3px solid transparent;
   transition: transform 0.1s;
 }
-.colour-swatch:hover { transform: scale(1.15); }
+.toolbar-circle:hover { transform: scale(1.15); }
+
+.colour-swatch {
+  border: 3px solid transparent;
+}
 .colour-swatch.active {
   border-color: #222;
   box-shadow: 0 0 0 2px #f0f0f0, 0 0 0 4px #222;
@@ -76,23 +77,16 @@ h1 {
 .divider { width: 1px; height: 28px; background: #ddd; }
 
 .eraser-toggle {
-  width: 30px;
-  height: 30px;
-  border-radius: 50%;
-  cursor: pointer;
   border: 3px dotted #ccc;
   background: #fff;
-  transition: transform 0.1s;
   flex-shrink: 0;
   display: flex;
   align-items: center;
   justify-content: center;
-  font-family: monospace;
   font-size: 8px;
   font-weight: bold;
   letter-spacing: 0;
 }
-.eraser-toggle:hover { transform: scale(1.15); }
 
 input[type=range] {
   -webkit-appearance: none;
@@ -129,7 +123,6 @@ input[type=range]::-webkit-slider-thumb {
   height: 6.667%;
   background: #80CBC4;
   color: #000;
-  font-family: monospace;
   font-weight: bold;
   font-size: clamp(9px, 1.4vw, 18px);
   display: flex;
@@ -160,7 +153,6 @@ input[type=range]::-webkit-slider-thumb {
 }
 
 .label-row label {
-  font-family: monospace;
   font-size: 1rem;
   color: #666;
   margin: 0;
@@ -171,7 +163,6 @@ input[type=range]::-webkit-slider-thumb {
 
 #imageCaption {
   flex: 1;
-  font-family: monospace;
   font-size: 1.1rem;
   background: #fff;
   color: #222;
@@ -187,7 +178,6 @@ input[type=range]::-webkit-slider-thumb {
 .btn-row { display: flex; gap: 40px; }
 
 button {
-  font-family: monospace;
   font-size: 1rem;
   text-transform: uppercase;
   letter-spacing: 1px;
@@ -210,7 +200,6 @@ button.primary {
 button.primary:hover { background: #444; border-color: #444; }
 
 #copyStatus {
-  font-family: monospace;
   font-size: 0.85rem;
   color: #444;
   min-height: 20px;

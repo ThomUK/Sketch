@@ -14,27 +14,27 @@ ui <- fluidPage(
         class = "toolbar",
       span(class = "toolbar-label", "Colour"),
       tags$div(
-        class = "colour-swatch active", style = "background:#222;",
+        class = "toolbar-circle colour-swatch active", style = "background:#222222;",
         title = "Black", onclick = "setColour('#222222', this)"
       ),
       tags$div(
-        class = "colour-swatch", style = "background:#C0C0C0;",
+        class = "toolbar-circle colour-swatch", style = "background:#C0C0C0;",
         title = "Silver", onclick = "setColour('#C0C0C0', this)"
       ),
       tags$div(
-        class = "colour-swatch", style = "background:#0F52BA;",
+        class = "toolbar-circle colour-swatch", style = "background:#0F52BA;",
         title = "Blue", onclick = "setColour('#0F52BA', this)"
       ),
       tags$div(
-        class = "colour-swatch", style = "background:#FF3131;",
+        class = "toolbar-circle colour-swatch", style = "background:#FF3131;",
         title = "Red", onclick = "setColour('#FF3131', this)"
       ),
       tags$div(
-        class = "colour-swatch", style = "background:#FFA500;",
+        class = "toolbar-circle colour-swatch", style = "background:#FFA500;",
         title = "Orange", onclick = "setColour('#FFA500', this)"
       ),
       tags$div(
-        class = "colour-swatch", style = "background:#32CD32;",
+        class = "toolbar-circle colour-swatch", style = "background:#32CD32;",
         title = "Green", onclick = "setColour('#32CD32', this)"
       ),
       div(class = "divider"),
@@ -46,7 +46,7 @@ ui <- fluidPage(
       div(class = "divider"),
       span(class = "toolbar-label", "Erase"),
       tags$div(
-        id = "eraserToggle", class = "eraser-toggle",
+        id = "eraserToggle", class = "toolbar-circle eraser-toggle",
         title = "Erase strokes of the current colour",
         onclick = "toggleEraser()"
       )

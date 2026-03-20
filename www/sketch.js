@@ -5,6 +5,7 @@
   var CAPTION_TOP = CANVAS_H - CAPTION_H; // 672
 
   var ERASER_DIAMETER = 30; // display pixels
+  var TOLERANCE = 28;       // colour-selective erase: max RGB error
 
   // Pre-build the SVG cursor: dotted circle sized to ERASER_DIAMETER
   var ERASER_CURSOR = (function () {
@@ -53,6 +54,21 @@
     if (y >= CAPTION_TOP) { isDrawing = false; }
   }
 
+  function drawPoint(ctx, x, y) {
+    ctx.beginPath();
+    ctx.fillStyle = currentColour;
+    ctx.arc(x, y, currentSize / 2, 0, Math.PI * 2);
+    ctx.fill();
+  }
+
+  function handlePointer(ctx, canvas, x, y) {
+    if (eraserMode > 0) {
+      if (y < CAPTION_TOP) { erase(ctx, canvas, x, y); }
+    } else {
+      drawSegment(ctx, x, y);
+    }
+  }
+
   // Erase pixels in a circular brush.
   // Mode 1: colour-selective — only pixels that look like a blend of currentColour on white.
   // Mode 2: erase all — every pixel in the circle becomes white.
@@ -86,7 +102,6 @@
       var dwr = 255 - tr, dwg = 255 - tg, dwb = 255 - tb;
       var magSq = dwr*dwr + dwg*dwg + dwb*dwb;
       if (magSq < 1) return; // target is white — nothing to erase
-      var TOLERANCE = 28;
 
       for (var i = 0; i < data.length; i += 4) {
         var idx = i / 4;
@@ -127,20 +142,13 @@
       if (eraserMode > 0) {
         erase(ctx, canvas, coords.x, coords.y);
       } else {
-        ctx.beginPath();
-        ctx.fillStyle = currentColour;
-        ctx.arc(coords.x, coords.y, currentSize / 2, 0, Math.PI * 2);
-        ctx.fill();
+        drawPoint(ctx, coords.x, coords.y);
       }
     });
     canvas.addEventListener('mousemove', function(e) {
       if (!isDrawing) return;
       var coords = getCanvasCoords(canvas, e.clientX, e.clientY);
-      if (eraserMode > 0) {
-        if (coords.y < CAPTION_TOP) { erase(ctx, canvas, coords.x, coords.y); }
-      } else {
-        drawSegment(ctx, coords.x, coords.y);
-      }
+      handlePointer(ctx, canvas, coords.x, coords.y);
     });
     canvas.addEventListener('mouseup',    function() { isDrawing = false; });
     canvas.addEventListener('mouseleave', function() { isDrawing = false; });
@@ -156,21 +164,14 @@
       if (eraserMode > 0) {
         erase(ctx, canvas, coords.x, coords.y);
       } else {
-        ctx.beginPath();
-        ctx.fillStyle = currentColour;
-        ctx.arc(coords.x, coords.y, currentSize / 2, 0, Math.PI * 2);
-        ctx.fill();
+        drawPoint(ctx, coords.x, coords.y);
       }
     }, { passive: false });
     canvas.addEventListener('touchmove', function(e) {
       e.preventDefault();
       if (!isDrawing) return;
       var coords = getCanvasCoords(canvas, e.touches[0].clientX, e.touches[0].clientY);
-      if (eraserMode > 0) {
-        if (coords.y < CAPTION_TOP) { erase(ctx, canvas, coords.x, coords.y); }
-      } else {
-        drawSegment(ctx, coords.x, coords.y);
-      }
+      handlePointer(ctx, canvas, coords.x, coords.y);
     }, { passive: false });
     canvas.addEventListener('touchend', function() { isDrawing = false; });
 
@@ -247,9 +248,8 @@
   function setColour(col, el) {
     currentColour = col;
     if (eraserMode === 1) { updateEraserToggle(); } // refresh crosshatch colour
-    document.querySelectorAll('.colour-swatch').forEach(function(s) {
-      s.classList.remove('active');
-    });
+    var prev = document.querySelector('.colour-swatch.active');
+    if (prev) prev.classList.remove('active');
     el.classList.add('active');
   }
 
