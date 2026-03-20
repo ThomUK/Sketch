@@ -71,9 +71,15 @@
     var h = y1 - y0;
     if (w <= 0 || h <= 0) return;
 
+    // Direction vector from white to the target colour (the "colour ray")
+    var dwr = 255 - tr, dwg = 255 - tg, dwb = 255 - tb;
+    var magSq = dwr*dwr + dwg*dwg + dwb*dwb;
+    if (magSq < 1) return; // target is white — nothing to erase
+
     var imageData = ctx.getImageData(x0, y0, w, h);
     var data = imageData.data;
     var rSq = radius * radius;
+    var TOLERANCE = 28; // max RGB error vs ideal alpha-blend (handles anti-aliasing)
 
     for (var i = 0; i < data.length; i += 4) {
       var idx = i / 4;
@@ -82,9 +88,18 @@
       if ((px - x) * (px - x) + (py - y) * (py - y) > rSq) continue;
 
       var pr = data[i], pg = data[i + 1], pb = data[i + 2];
-      var dTarget = (pr-tr)*(pr-tr) + (pg-tg)*(pg-tg) + (pb-tb)*(pb-tb);
-      var dWhite  = (pr-255)*(pr-255) + (pg-255)*(pg-255) + (pb-255)*(pb-255);
-      if (dTarget < dWhite) {
+
+      // Project (white→pixel) onto (white→target) to estimate the blend alpha.
+      // A genuine stroke pixel of this colour satisfies: pixel ≈ alpha*colour + (1-alpha)*white
+      var alpha = ((255-pr)*dwr + (255-pg)*dwg + (255-pb)*dwb) / magSq;
+      if (alpha <= 0.02 || alpha > 1.2) continue; // already white, or a different colour
+
+      // Compute the expected pixel for this alpha and check the RGB error
+      var a = Math.min(alpha, 1);
+      var er = Math.round(255 - a * dwr) - pr;
+      var eg = Math.round(255 - a * dwg) - pg;
+      var eb = Math.round(255 - a * dwb) - pb;
+      if (er*er + eg*eg + eb*eb <= TOLERANCE * TOLERANCE) {
         data[i] = data[i + 1] = data[i + 2] = 255;
       }
     }
