@@ -112,7 +112,7 @@ input[type=range]::-webkit-slider-thumb {
   box-shadow: 0 2px 12px rgba(0,0,0,0.1);
 }
 
-/* Live caption preview — always visible, overlaid on the bottom 48px of the 720px canvas (6.667%). */
+/* Caption bar — overlaid on the bottom 48px of the 720px canvas (6.667%). */
 #captionPreview {
   position: absolute;
   bottom: 0;
@@ -126,13 +126,24 @@ input[type=range]::-webkit-slider-thumb {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  pointer-events: none;
   padding: 0 1em;
   overflow: hidden;
   white-space: nowrap;
 }
-#captionPreview .caption-text     { overflow: hidden; text-overflow: ellipsis; }
-#captionPreview .caption-datetime { flex-shrink: 0; padding-left: 1em; opacity: 0.8; }
+#captionPreview .caption-text {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  outline: none;
+  cursor: text;
+  color: #000;
+}
+#captionPreview .caption-text:empty::before {
+  content: attr(data-placeholder);
+  color: rgba(0,0,0,0.35);
+}
+
+#captionPreview .caption-datetime { flex-shrink: 0; padding-left: 1em; opacity: 0.8; pointer-events: none; }
 
 #drawCanvas {
   display: block;
@@ -142,36 +153,6 @@ input[type=range]::-webkit-slider-thumb {
   background: #fff;
 }
 
-.label-row {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  width: 100%;
-  padding-left: 12px;
-}
-
-.label-row label {
-  font-size: 1rem;
-  color: #666;
-  margin: 0;
-  text-transform: uppercase;
-  letter-spacing: 1px;
-  white-space: nowrap;
-}
-
-#imageCaption {
-  flex: 1;
-  font-size: 1.1rem;
-  background: #fff;
-  color: #222;
-  border: 1px solid #ccc;
-  border-radius: 6px;
-  padding: 0 12px;
-  height: 52px;
-  outline: none;
-}
-#imageCaption:focus { border-color: #888; }
-#imageCaption::placeholder { color: #bbb; }
 
 button {
   font-size: 1.6rem;

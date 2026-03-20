@@ -59,14 +59,6 @@ ui <- fluidPage(
       tags$canvas(id = "drawCanvas", width = "1280", height = "720"),
       tags$div(id = "captionPreview")
     ),
-    div(
-      class = "label-row",
-      tags$label(`for` = "imageCaption", "Caption"),
-      tags$input(
-        id = "imageCaption", type = "text",
-        placeholder = "Add an optional caption to your sketch...",
-      )
-    ),
     tags$div(id = "copyStatus", "")
   )
 )

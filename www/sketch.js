@@ -175,10 +175,13 @@
     }, { passive: false });
     canvas.addEventListener('touchend', function() { isDrawing = false; });
 
-    var captionInput = document.getElementById('imageCaption');
-    if (captionInput) {
-      captionInput.addEventListener('input', updateCaptionPreview);
-    }
+    document.addEventListener('keydown', function(e) {
+      if (e.ctrlKey || e.metaKey || e.altKey) return;
+      if (e.key.length !== 1) return;
+      var caption = document.querySelector('#captionPreview .caption-text');
+      if (!caption || document.activeElement === caption) return;
+      caption.focus();
+    });
 
     setInterval(function() {
       var el = document.querySelector('#captionPreview .caption-datetime');
@@ -194,14 +197,21 @@
     var left = preview.querySelector('.caption-text');
     var right = preview.querySelector('.caption-datetime');
     if (!left) {
-      left  = document.createElement('span');
+      left = document.createElement('span');
       left.className = 'caption-text';
+      left.contentEditable = 'true';
+      left.dataset.placeholder = 'STart typing to add a caption...';
+      left.addEventListener('keydown', function(e) {
+        if (e.key === 'Enter') e.preventDefault();
+      });
+      left.addEventListener('input', function() {
+        if (left.innerHTML === '<br>') left.innerHTML = '';
+      });
       right = document.createElement('span');
       right.className = 'caption-datetime';
       preview.appendChild(left);
       preview.appendChild(right);
     }
-    left.textContent  = getCaption();
     right.textContent = formatDateTime(new Date());
   }
 
@@ -265,8 +275,8 @@
   }
 
   function getCaption() {
-    var el = document.getElementById('imageCaption');
-    return el ? el.value.trim() : '';
+    var el = document.querySelector('#captionPreview .caption-text');
+    return el ? el.textContent.trim() : '';
   }
 
   function slugify(text) {
