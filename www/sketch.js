@@ -2,14 +2,13 @@
   var CANVAS_W = 1280;
   var CANVAS_H = 720;
   var CAPTION_H = 48;
+  var CAPTION_TOP = CANVAS_H - CAPTION_H; // 672
 
   var isDrawing = false;
+  var isErasing = false;
   var lastX = 0, lastY = 0;
   var currentColour = '#222222';
   var currentSize = 4;
-
-  // Caption zone is always reserved at the bottom
-  var CAPTION_TOP = CANVAS_H - CAPTION_H; // 672
 
   function formatDateTime(d) {
     var p = function(n) { return String(n).padStart(2, '0'); };
@@ -17,7 +16,6 @@
       ' ' + p(d.getHours()) + ':' + p(d.getMinutes()) + ':' + p(d.getSeconds());
   }
 
-  // Scale display coordinates to canvas pixel coordinates
   function getCanvasCoords(canvas, clientX, clientY) {
     var r = canvas.getBoundingClientRect();
     return {
@@ -26,7 +24,7 @@
     };
   }
 
-  // Draw a segment, clamping to the caption zone and stopping there
+  // Draw a segment, clamping to the caption boundary
   function drawSegment(ctx, x, y) {
     var targetY = Math.min(y, CAPTION_TOP - 1);
     ctx.beginPath();
@@ -38,6 +36,42 @@
     lastX = x;
     lastY = targetY;
     if (y >= CAPTION_TOP) { isDrawing = false; }
+  }
+
+  // Erase pixels within a circular brush that are closer (in RGB space) to
+  // currentColour than to white — naturally handles anti-aliased stroke edges.
+  function eraseColour(ctx, canvas, x, y) {
+    var tr = parseInt(currentColour.slice(1, 3), 16);
+    var tg = parseInt(currentColour.slice(3, 5), 16);
+    var tb = parseInt(currentColour.slice(5, 7), 16);
+
+    var radius = Math.max(currentSize / 2, 4);
+    var x0 = Math.max(0,            Math.floor(x - radius));
+    var y0 = Math.max(0,            Math.floor(y - radius));
+    var x1 = Math.min(canvas.width, Math.ceil(x  + radius));
+    var y1 = Math.min(CAPTION_TOP,  Math.ceil(y  + radius));
+    var w = x1 - x0;
+    var h = y1 - y0;
+    if (w <= 0 || h <= 0) return;
+
+    var imageData = ctx.getImageData(x0, y0, w, h);
+    var data = imageData.data;
+    var rSq = radius * radius;
+
+    for (var i = 0; i < data.length; i += 4) {
+      var idx = i / 4;
+      var px = x0 + (idx % w);
+      var py = y0 + Math.floor(idx / w);
+      if ((px - x) * (px - x) + (py - y) * (py - y) > rSq) continue;
+
+      var pr = data[i], pg = data[i + 1], pb = data[i + 2];
+      var dTarget = (pr-tr)*(pr-tr) + (pg-tg)*(pg-tg) + (pb-tb)*(pb-tb);
+      var dWhite  = (pr-255)*(pr-255) + (pg-255)*(pg-255) + (pb-255)*(pb-255);
+      if (dTarget < dWhite) {
+        data[i] = data[i + 1] = data[i + 2] = 255;
+      }
+    }
+    ctx.putImageData(imageData, x0, y0);
   }
 
   function initCanvas() {
@@ -54,11 +88,16 @@
       isDrawing = true;
       lastX = coords.x;
       lastY = coords.y;
+      if (isErasing) { eraseColour(ctx, canvas, coords.x, coords.y); }
     });
     canvas.addEventListener('mousemove', function(e) {
       if (!isDrawing) return;
       var coords = getCanvasCoords(canvas, e.clientX, e.clientY);
-      drawSegment(ctx, coords.x, coords.y);
+      if (isErasing) {
+        if (coords.y < CAPTION_TOP) { eraseColour(ctx, canvas, coords.x, coords.y); }
+      } else {
+        drawSegment(ctx, coords.x, coords.y);
+      }
     });
     canvas.addEventListener('mouseup',    function() { isDrawing = false; });
     canvas.addEventListener('mouseleave', function() { isDrawing = false; });
@@ -71,22 +110,25 @@
       isDrawing = true;
       lastX = coords.x;
       lastY = coords.y;
+      if (isErasing) { eraseColour(ctx, canvas, coords.x, coords.y); }
     }, { passive: false });
     canvas.addEventListener('touchmove', function(e) {
       e.preventDefault();
       if (!isDrawing) return;
       var coords = getCanvasCoords(canvas, e.touches[0].clientX, e.touches[0].clientY);
-      drawSegment(ctx, coords.x, coords.y);
+      if (isErasing) {
+        if (coords.y < CAPTION_TOP) { eraseColour(ctx, canvas, coords.x, coords.y); }
+      } else {
+        drawSegment(ctx, coords.x, coords.y);
+      }
     }, { passive: false });
     canvas.addEventListener('touchend', function() { isDrawing = false; });
 
-    // Update caption text when user types
     var captionInput = document.getElementById('imageCaption');
     if (captionInput) {
       captionInput.addEventListener('input', updateCaptionPreview);
     }
 
-    // Keep the datetime in the preview ticking
     setInterval(function() {
       var el = document.querySelector('#captionPreview .caption-datetime');
       if (el) { el.textContent = formatDateTime(new Date()); }
@@ -112,8 +154,32 @@
     right.textContent = formatDateTime(new Date());
   }
 
+  function updateEraserToggle() {
+    var toggle = document.getElementById('eraserToggle');
+    if (!toggle) return;
+    if (isErasing) {
+      toggle.style.background = 'repeating-linear-gradient(-45deg, #fff 0px, #fff 3px, ' + currentColour + ' 3px, ' + currentColour + ' 6px)';
+      toggle.style.borderStyle = 'dotted';
+      toggle.style.borderColor = currentColour;
+      toggle.style.boxShadow = '0 0 0 2px #f0f0f0, 0 0 0 4px ' + currentColour;
+    } else {
+      toggle.style.background = '#fff';
+      toggle.style.borderStyle = 'dotted';
+      toggle.style.borderColor = '';
+      toggle.style.boxShadow = '';
+    }
+  }
+
+  function toggleEraser() {
+    isErasing = !isErasing;
+    updateEraserToggle();
+    var canvas = document.getElementById('drawCanvas');
+    if (canvas) { canvas.style.cursor = isErasing ? 'cell' : 'crosshair'; }
+  }
+
   function setColour(col, el) {
     currentColour = col;
+    if (isErasing) { updateEraserToggle(); } // refresh toggle colour to match new selection
     document.querySelectorAll('.colour-swatch').forEach(function(s) {
       s.classList.remove('active');
     });
@@ -141,7 +207,6 @@
     return text.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '') || 'sketch';
   }
 
-  // Caption is always overlaid within the bottom CAPTION_H pixels — output is always CANVAS_W x CANVAS_H
   function buildFlat() {
     var canvas  = document.getElementById('drawCanvas');
     var caption = getCaption();
@@ -157,7 +222,6 @@
     ctx.fillRect(0, 0, flat.width, flat.height);
     ctx.drawImage(canvas, 0, 0);
 
-    // Caption bar
     ctx.fillStyle = '#80CBC4';
     ctx.fillRect(0, CAPTION_TOP, flat.width, CAPTION_H);
 
@@ -209,11 +273,11 @@
     }, 'image/png');
   }
 
-  // Expose functions called from inline HTML attributes
   window.setColour = setColour;
   window.setSize = setSize;
   window.clearCanvas = clearCanvas;
   window.openInNewWindow = openInNewWindow;
+  window.toggleEraser = toggleEraser;
 
   document.addEventListener('DOMContentLoaded', initCanvas);
 })();

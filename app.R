@@ -40,6 +40,13 @@ ui <- fluidPage(
       tags$input(
         type = "range", min = "1", max = "24", value = "4",
         oninput = "setSize(this.value)"
+      ),
+      div(class = "divider"),
+      span(class = "toolbar-label", "Erase"),
+      tags$div(
+        id = "eraserToggle", class = "eraser-toggle",
+        title = "Erase strokes of the current colour",
+        onclick = "toggleEraser()"
       )
     ),
     div(

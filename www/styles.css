@@ -58,6 +58,18 @@ h1 {
 
 .divider { width: 1px; height: 28px; background: #ddd; }
 
+.eraser-toggle {
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  cursor: pointer;
+  border: 3px dotted #bbb;
+  background: #fff;
+  transition: transform 0.1s;
+  flex-shrink: 0;
+}
+.eraser-toggle:hover { transform: scale(1.15); }
+
 input[type=range] {
   -webkit-appearance: none;
   width: 100px;
