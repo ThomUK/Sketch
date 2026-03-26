@@ -364,14 +364,14 @@
   }
 
   // Exports the current sketch as a PNG by opening a new popup window.
-  // The popup contains an instruction, the full-resolution image, and a save link.
-  // Uses a data URL (self-contained base64) rather than a blob URL to avoid
-  // cross-context blob access failures in restrictive browser security environments
-  // (e.g. enterprise policies blocking blob URL access from iframe-opened popups).
+  // The popup contains an instruction, the full-resolution image (as a canvas element),
+  // and a save link. Using a canvas + drawImage avoids any URL-based resource loading
+  // (blob: or data: URIs), which can be blocked by enterprise browser policies in Edge.
+  // Right-click -> copy image works on canvas elements for pasting into e.g. Teams.
+  // The save button generates a data URL on demand from the popup's own canvas.
   function openInNewWindow() {
     var flat     = buildFlat();
     var filename = slugify(getCaption()) + '.png';
-    var dataUrl  = flat.toDataURL('image/png');
     var win = window.open('', '_blank');
     if (!win) {
       setStatus('Popup blocked - please allow popups and try again');
@@ -384,15 +384,20 @@
     p.style.cssText = 'font-family:monospace;font-size:0.9rem;color:#666;text-transform:uppercase;letter-spacing:1px;';
     p.textContent = 'Right-click the image to copy, or save using the button below.';
     d.body.appendChild(p);
-    var img = d.createElement('img');
-    img.src = dataUrl;
-    img.style.cssText = 'flex:1;min-height:0;max-width:100%;object-fit:contain;border:1px solid #ccc;border-radius:6px;box-shadow:0 2px 12px rgba(0,0,0,0.1);';
-    d.body.appendChild(img);
+    // Draw into a canvas owned by the popup document — no URL loading required.
+    var cv = d.createElement('canvas');
+    cv.width  = flat.width;
+    cv.height = flat.height;
+    cv.style.cssText = 'flex:1;min-height:0;max-width:100%;object-fit:contain;border:1px solid #ccc;border-radius:6px;box-shadow:0 2px 12px rgba(0,0,0,0.1);';
+    cv.getContext('2d').drawImage(flat, 0, 0);
+    d.body.appendChild(cv);
     var a = d.createElement('a');
-    a.href = dataUrl;
     a.download = filename;
     a.style.cssText = 'display:inline-flex;align-items:center;height:52px;padding:0 40px;background:#222;color:#fff;font-family:monospace;font-size:1rem;text-transform:uppercase;letter-spacing:1px;text-decoration:none;border-radius:6px;border:1px solid #222;';
     a.textContent = '\u2193 Save as ' + filename;
+    // Generate the data URL only when the save button is clicked, from the popup's
+    // own canvas, which avoids any cross-context URL issues.
+    a.addEventListener('click', function() { a.href = cv.toDataURL('image/png'); });
     d.body.appendChild(a);
     setStatus('\u2197 Opened in new window');
     setTimeout(function() { setStatus(''); }, 5000);
